@@ -14,6 +14,7 @@ type DataProvider struct {
 	// If a non-negative `offset` is provided, only entries from `offset`
 	// into the data payload and `count` entries are returned.
 	All func(offset int, count int) ([]map[string]interface{}, error)
+	FindOne func(constraints []Constraint) (*map[string]interface{}, error)
 }
 
 type Schema struct {
@@ -86,6 +87,90 @@ func (u *UrlParams) GetInt(key string) (int, error) {
 	return int_value, nil
 }
 
+type Comparison string
+const (
+	Comparison_UNDEF Comparison = ""
+	Comparison_EQ Comparison = "eq"
+	Comparison_NE Comparison = "ne"
+	Comparison_LT Comparison = "lt"
+	Comparison_LE Comparison = "le"
+	Comparison_GT Comparison = "gt"
+	Comparison_GE Comparison = "ge"
+)
+
+type Constraint struct {
+	Property string
+	Value string
+	Comparison Comparison
+}
+
+func filter_string_array(lst []string, filter_fn func(string) bool) []string {
+	p := []string{}
+	for _, el := range lst {
+		if filter_fn(el) {
+			p = append(p, el)
+		}
+	}
+	return p
+}
+
+// Parse a comparison part, e.g. "eq "Sam"" should return
+// (Comparison_EQ, "Sam", nil)
+func parse_comparison_part (part string) (Comparison, string, error) {
+	part = strings.TrimSpace(part)
+	last := len(part) - 1
+	if len(part) >= 2 {
+		if (string(part[0]) == "\"" && string(part[last]) == "\"") || (string(part[0]) == "'" && string(part[last]) == "'") {
+			part = part[1:last]
+		}
+	}
+
+	parts := strings.Split(part, " ")
+	parts = filter_string_array(parts, func (el string) bool { return len(el) > 0 })
+
+	if len(parts) != 2 {
+		return Comparison_UNDEF, "", fmt.Errorf(fmt.Sprintf("expected 2 parts in comparison string, received %d. comparison string=\"%#v\"", len(parts), parts))
+	}
+
+	switch parts[0] {
+	case "-eq":
+		return Comparison_EQ, parts[1], nil
+	case "-ne":
+		return Comparison_NE, parts[1], nil
+	case "-le":
+		return Comparison_LE, parts[1], nil
+	case "-lt":
+		return Comparison_LT, parts[1], nil
+	case "-gt":
+		return Comparison_GT, parts[1], nil
+	case "-ge":
+		return Comparison_GE, parts[1], nil
+	}
+	return Comparison_UNDEF, "", fmt.Errorf("unknown comparison operator: \"%s\"", parts[0])
+}
+
+func parse_constraints(route_params *UrlParams) ([]Constraint, error) {
+
+	var constraints []Constraint
+
+	for key, values := range route_params.params {
+		if len(values) != 1 { continue }
+		var value string = values[0]
+		
+		comparison, right_value, err := parse_comparison_part(value)
+		if err != nil { return nil, err }
+		
+		c := Constraint {}
+		c.Property = key
+		c.Value = right_value
+		c.Comparison = comparison
+
+		constraints = append(constraints, c)
+	}
+
+	return constraints, nil
+
+}
 
 var _requestDefinitions = []RequestDefinition {
 	{
@@ -113,8 +198,9 @@ var _requestDefinitions = []RequestDefinition {
 		name: "findone",
 		method: RequestType_GET,
 		action: func (route_params *UrlParams, provider *DataProvider) (interface{}, error) {
-			fmt.Printf("DEBUG inside findone action impl\n")
-			return nil, fmt.Errorf("unimpl")
+			constraints, err := parse_constraints(route_params)
+			if err != nil { return nil, err }
+			return provider.FindOne(constraints)
 		},
 	},
 }
