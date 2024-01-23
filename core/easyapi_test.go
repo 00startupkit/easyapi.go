@@ -17,7 +17,7 @@ func GenerateTestUserPayload (ct int) []map[string]interface{} {
 		var entry map[string]interface{}
 		entry = make(map[string]interface{})
 		entry["name"] = faker.RandomPersonFullName()
-		entry["loation"] = faker.RandomAddressCity()
+		entry["location"] = faker.RandomAddressCity()
 		payload = append(payload, entry)
 	}
 	return payload
