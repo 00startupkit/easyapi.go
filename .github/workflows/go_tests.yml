@@ -21,6 +21,6 @@ jobs:
       - name: Display Go version
         run: go version
       - name: Install dependencies
-        run: go get .
+        run: go get -u ./...
       - name: Test with Go CLI
         run: go test ./... -v
