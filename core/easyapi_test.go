@@ -75,12 +75,12 @@ func GetRoute (res *Result, route_path string) *RouteResult {
 	return nil
 }
 
-func SetupDataProviderTests (t *testing.T, data_provider_creator func(payload []map[string]interface{})*DataProvider) {
+func SetupDataProviderTests (t *testing.T, data_provider_creator func(t *testing.T, payload []map[string]interface{})*DataProvider) {
 
 	t.Run("fetch all", func (t *testing.T) {
 
 		payload := GenerateTestUserPayload(10)
-		test_user_provider := data_provider_creator(payload)
+		test_user_provider := data_provider_creator(t, payload)
 
 		config := &Config{
 			Schemas: []*Schema{
@@ -103,7 +103,7 @@ func SetupDataProviderTests (t *testing.T, data_provider_creator func(payload []
 
 	t.Run("setup api root", func (t *testing.T) {
 		payload := GenerateTestUserPayload(10)
-		test_user_provider := data_provider_creator(payload)
+		test_user_provider := data_provider_creator(t, payload)
 
 		config := &Config{
 			Root: "/home",
@@ -123,7 +123,7 @@ func SetupDataProviderTests (t *testing.T, data_provider_creator func(payload []
 
 	t.Run("invalid api root", func (t *testing.T) {
 		payload := GenerateTestUserPayload(10)
-		test_user_provider := data_provider_creator(payload)
+		test_user_provider := data_provider_creator(t, payload)
 		config := &Config{
 			Root: "home",
 			Schemas: []*Schema{
@@ -141,7 +141,7 @@ func SetupDataProviderTests (t *testing.T, data_provider_creator func(payload []
 	t.Run("fetch all", func (t *testing.T) {
 		var kDataSize int = 10
 		payload := GenerateTestUserPayload(kDataSize)
-		test_user_provider := data_provider_creator(payload)
+		test_user_provider := data_provider_creator(t, payload)
 
 		config := &Config{
 			Schemas: []*Schema{
@@ -171,7 +171,7 @@ func SetupDataProviderTests (t *testing.T, data_provider_creator func(payload []
 	t.Run("fetch all bounded", func (t *testing.T) {
 		var kDataSize int = 10
 		payload := GenerateTestUserPayload(kDataSize)
-		test_user_provider := data_provider_creator(payload)
+		test_user_provider := data_provider_creator(t, payload)
 
 		config := &Config{
 			Schemas: []*Schema{
@@ -201,7 +201,7 @@ func SetupDataProviderTests (t *testing.T, data_provider_creator func(payload []
 	t.Run("fetch all bounded 2", func (t *testing.T) {
 		var kDataSize int = 10
 		payload := GenerateTestUserPayload(kDataSize)
-		test_user_provider := data_provider_creator(payload)
+		test_user_provider := data_provider_creator(t, payload)
 
 		config := &Config{
 			Schemas: []*Schema{
@@ -232,7 +232,7 @@ func SetupDataProviderTests (t *testing.T, data_provider_creator func(payload []
 	t.Run("fetch all bounded negative fails", func (t *testing.T) {
 		var kDataSize int = 10
 		payload := GenerateTestUserPayload(kDataSize)
-		test_user_provider := data_provider_creator(payload)
+		test_user_provider := data_provider_creator(t, payload)
 
 		config := &Config{
 			Schemas: []*Schema{
@@ -269,7 +269,7 @@ func SetupDataProviderTests (t *testing.T, data_provider_creator func(payload []
 			}, 
 		}
 
-		test_user_provider := data_provider_creator(payload)
+		test_user_provider := data_provider_creator(t, payload)
 
 		config := &Config{
 			Schemas: []*Schema{
@@ -299,7 +299,7 @@ func SetupDataProviderTests (t *testing.T, data_provider_creator func(payload []
 }
 
 func TestDataProviderTestableProvider (t *testing.T) {
-	SetupDataProviderTests(t, func(payload []map[string]interface{})*DataProvider {
+	SetupDataProviderTests(t, func(t *testing.T, payload []map[string]interface{})*DataProvider {
 		return CreateTestableUserProvider(payload);
 	});
 }
