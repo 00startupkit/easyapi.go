@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/00startupkit/easyapi.go/core"
 	"github.com/ddosify/go-faker/faker"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
@@ -92,18 +93,6 @@ func GenerateTestUserPayload (ct int) []map[string]interface{} {
 	return payload
 }
 
-
-type ColType int
-const (
-	ColType_UNDEF ColType = 0
-	ColType_INT ColType = 1
-	ColType_STRING ColType = 2
-)
-
-type Column struct {
-	Type ColType
-	Name string
-}
 
 func bulk_insert_query_creator (table string, columns []Column, payload []map[string]interface{}) (string, error) {
 	if len(columns) == 0 {
@@ -213,4 +202,107 @@ func TestMysqlSetup (t *testing.T) {
 		assert.NoError(t, error, fmt.Sprintf("Insert query creation failed: %s", insert_query))
 		assert.NoError(t, execute_query(dbname, insert_query), fmt.Sprintf("Insert query failed: %s", insert_query))
 	});
+}
+
+func schema_type_to_sql_type (fieldtype core.TestSchemaFieldType) (string, error) {
+	switch fieldtype {
+	case core.TestSchemaFieldType_STRING:
+		return "varchar(255)", nil
+	case core.TestSchemaFieldType_INT:
+		return "int", nil
+	}
+	return "", fmt.Errorf(fmt.Sprintf("conversion from schema field type %d to sql type not defined", fieldtype))
+}
+
+func create_table_from_schema (dbname, tablename string, schema []*core.TestSchemaDefinition) error {
+	if len(schema) == 0 { return fmt.Errorf("cannot create table from an empty schema") }
+
+	field_parts := []string{}
+	for _, s := range schema {
+		sqltype, err := schema_type_to_sql_type(s.FieldType)
+		if err != nil { return err }
+		field_info := fmt.Sprintf(`%s %s`, s.FieldName, sqltype)
+
+		field_parts = append(field_parts, field_info)
+	}
+
+	table_sql := fmt.Sprintf(`CREATE TABLE %s (
+		%s
+	)`, tablename, strings.Join(field_parts, ",\n"))
+	return execute_query(dbname, table_sql)
+}
+
+func schema_type_to_col_type (schematype core.TestSchemaFieldType) (ColType, error) {
+	switch schematype {
+	case core.TestSchemaFieldType_INT:
+		return ColType_INT, nil
+	case core.TestSchemaFieldType_STRING:
+		return ColType_STRING, nil
+	}
+	return ColType_UNDEF, fmt.Errorf(fmt.Sprintf("conversion from schema type to col type not defined for %#v", schematype))
+}
+
+type MysqlTestUnitContext struct {
+	DatabaseName string
+}
+
+func TestMysqlDataProvider (t *testing.T) {
+	core.SetupDataProviderTests(
+		t,
+		func (t *testing.T, ctx *interface{}) error {
+			var dbname string = hash("test_database")
+			*ctx = &MysqlTestUnitContext{
+				DatabaseName: dbname,
+			}
+			// Database setup
+			assert.NoError(t, setup_database(dbname))
+			fmt.Printf("Database setup: %s\n", dbname)
+			return nil
+		},
+		func (t *testing.T, ctx *interface{}) error {
+			mysql_ctx, ok := (*ctx).(*MysqlTestUnitContext)
+			if !ok {  return fmt.Errorf("data provider test context is not defined") }
+
+			assert.NoError(t, cleanup_database(mysql_ctx.DatabaseName))
+			fmt.Printf("Database cleaned up: %s\n", mysql_ctx.DatabaseName)
+			return nil
+		},
+		func (
+			t *testing.T,
+			schema []*core.TestSchemaDefinition,
+			payload []map[string]interface{},
+			opaq *interface{}) *core.DataProvider {
+				fmt.Printf("Fetching mysql data\n")
+
+				mysql_ctx, ok := (*opaq).(*MysqlTestUnitContext)
+				assert.True(t, ok, "mysql context not provided")
+
+				var dbname string = mysql_ctx.DatabaseName
+
+				// Table creation based on schema
+				var tablename string = "Users"
+				assert.NoError(t, create_table_from_schema(dbname, tablename, schema));
+
+				// Insert the data payload into the sql table
+				columns := []Column{}
+				for _, s := range schema {
+					coltype, err := schema_type_to_col_type(s.FieldType)
+					assert.NoError(t, err, "Failed to convert schema type to column type")
+					if err != nil { return nil }
+
+					col := Column {}
+					col.Name = s.FieldName
+					col.Type = coltype
+
+					columns = append(columns, col)
+				}
+				insert_query, error := bulk_insert_query_creator(tablename, columns, payload)
+				assert.NoError(t, error)
+				assert.NoError(t, execute_query(dbname, insert_query), fmt.Sprintf("Insert query failed: %s", insert_query))
+
+				// Create the data driver for accessing the newly inserted data from mysql
+				mysql_dataprovider, err := CreateMysqlDataProvider(_DB_USER, _DB_PASS, dbname, tablename, columns)
+				assert.NoError(t, err)
+				return mysql_dataprovider
+	})
 }
