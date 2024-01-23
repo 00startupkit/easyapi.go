@@ -37,6 +37,14 @@ func CreateTestableUserProvider (payload []map[string]interface{}) *DataProvider
 	}
 }
 
+func GetRoute (res *Result, route_path string) *RouteResult {
+	if res == nil { return nil }
+	for _, route := range res.Routes {
+		if route.Route == route_path { return route }
+	}
+	return nil
+}
+
 func TestNormalConfig (t *testing.T) {
 
 	payload := GenerateTestUserPayload(10)
@@ -54,8 +62,10 @@ func TestNormalConfig (t *testing.T) {
 	res, err := EasyApiImpl(config);
 	assert.NoError(t, err, "Default config failed.");
 	assert.GreaterOrEqual(t, len(res.Routes), 1)
-	assert.Equal(t, res.Routes[0].Route, "/api/users/all")
-	assert.Equal(t, res.Routes[0].Type, RequestType_GET)
+
+	all_route := GetRoute(res, "/api/users/all")
+	assert.NotNil(t, all_route)
+	assert.Equal(t, all_route.Type, RequestType_GET)
 }
 
 func TestApiRootConfig (t *testing.T) {
@@ -73,8 +83,9 @@ func TestApiRootConfig (t *testing.T) {
 	}
 	res, err := EasyApiImpl(config);
 	assert.NoError(t, err, "Default config failed.");
-	assert.GreaterOrEqual(t, len(res.Routes), 1)
-	assert.Equal(t, res.Routes[0].Route, "/home/users/all")
+	assert.NotEmpty(t, res.Routes)
+	all_route := GetRoute(res, "/home/users/all")
+	assert.NotNil(t, all_route)
 }
 
 func TestApiInvalidRootConfig (t *testing.T) {
@@ -113,8 +124,9 @@ func TestFetchAll (t *testing.T) {
 	assert.NoError(t, err, "Default config failed.")
 	assert.GreaterOrEqual(t, len(res.Routes), 1)
 
-	all_route := res.Routes[0]
-	assert.Equal(t, all_route.Route, "/api/users/all")
+	all_route := GetRoute(res, "/api/users/all")
+	assert.NotNil(t, all_route)
+
 	res_opaque, err := all_route.Action("")
 	assert.NoError(t, err)
 
@@ -143,8 +155,8 @@ func TestFetchAllBounded (t *testing.T) {
 	assert.NoError(t, err, "Default config failed.")
 	assert.NotEmpty(t, res.Routes)
 	
-	all_route := res.Routes[0]
-	assert.Equal(t, all_route.Route, "/api/users/all")
+	all_route := GetRoute(res, "/api/users/all")
+	assert.NotNil(t, all_route)
 	var kNbEntriesToRetrieve = 4
 	res_opaque, err := all_route.Action(fmt.Sprintf("offset=2&&count=%d", kNbEntriesToRetrieve))
 	assert.NoError(t, err)
@@ -173,9 +185,10 @@ func TestFetchAllBounded2 (t *testing.T) {
 	res, err := EasyApiImpl(config);
 	assert.NoError(t, err, "Default config failed.")
 	assert.NotEmpty(t, res.Routes)
-	
-	all_route := res.Routes[0]
-	assert.Equal(t, all_route.Route, "/api/users/all")
+
+	all_route := GetRoute(res, "/api/users/all")
+	assert.NotNil(t, all_route)
+
 	var kNbEntriesToRetrieve = 3
 	res_opaque, err := all_route.Action(fmt.Sprintf("offset=8&&count=%d", kNbEntriesToRetrieve))
 	assert.NoError(t, err)
@@ -204,9 +217,10 @@ func TestFetchAllBoundedNegative (t *testing.T) {
 	res, err := EasyApiImpl(config);
 	assert.NoError(t, err, "Default config failed.")
 	assert.NotEmpty(t, res.Routes)
-	
-	all_route := res.Routes[0]
-	assert.Equal(t, all_route.Route, "/api/users/all")
+
+	all_route := GetRoute(res, "/api/users/all")
+	assert.NotNil(t, all_route)
+
 	res_opaque, err := all_route.Action("offset=-1&&count=-1" )
 	assert.Error(t, err)
 	assert.Nil(t, res_opaque)
