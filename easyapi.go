@@ -37,15 +37,27 @@ const (
 	RequestType_POST RequestType = 2
 )
 
+type RequestDefinition struct {
+	name string
+	method RequestType
+	action func(route_params *UrlParams, provider *DataProvider) (interface{}, error)
+}
+
 type RouteResult struct {
 	// The route that should be registered.
 	Route string
 	// The type that the route should be registered as.
 	Type RequestType
-	// The route action to be taken that will execute the proper action.
-	Action func (route_param string) (interface{}, error)
+
+	_definition RequestDefinition
+	_schema *Schema
 }
 
+func (r *RouteResult) Action (route_params string) (interface{}, error) {
+	parsed_params, err := parse_route_params(route_params)
+	if err != nil { return nil, err }
+	return r._definition.action(parsed_params, r._schema.Provider)
+}
 
 type UrlParams struct {
 	params url.Values
@@ -66,32 +78,25 @@ func (u *UrlParams) Get(key string) (string, error) {
 	return value, nil
 }
 
-
-type RequestDefinition struct {
-	name string
-	method RequestType
-	action func(route_params *UrlParams, provider *DataProvider) (interface{}, error)
+func (u *UrlParams) GetInt(key string) (int, error) {
+	str_value, err := u.Get(key)
+	if err != nil { return -1, err }
+	int_value, err := strconv.Atoi(str_value)
+	if err != nil { return -1, err }
+	return int_value, nil
 }
+
 
 var _requestDefinitions = []RequestDefinition {
 	{
 		name: "all",
 		method: RequestType_GET,
 		action: func (route_params *UrlParams, provider *DataProvider) (interface{}, error) {
-			var offset int = 0
-			var ct int = math.MaxInt32
 
-			offset_str, err := route_params.Get("offset")
-			if err == nil && len(offset_str) > 0 {
-				offset, err = strconv.Atoi(offset_str)
-				if err != nil { return nil, err }
-			}
-
-			ct_str, err := route_params.Get("count")
-			if err == nil && len(ct_str) > 0 {
-				ct, err = strconv.Atoi(ct_str)
-				if err != nil { return nil, err }
-			}
+			offset, err := route_params.GetInt("offset")
+			if err !=  nil { offset = 0 }
+			ct, err := route_params.GetInt("count")
+			if err != nil { ct = math.MaxInt32 }
 
 			if offset < 0 || ct < 0 {
 				return nil, fmt.Errorf(fmt.Sprintf("negative offset or count not allowed, offset = %d, count = %d", offset, ct))
@@ -103,6 +108,13 @@ var _requestDefinitions = []RequestDefinition {
 			}
 
 			return &payload, nil
+		},
+	},{
+		name: "findone",
+		method: RequestType_GET,
+		action: func (route_params *UrlParams, provider *DataProvider) (interface{}, error) {
+			fmt.Printf("DEBUG inside findone action impl\n")
+			return nil, fmt.Errorf("unimpl")
 		},
 	},
 }
@@ -142,13 +154,8 @@ func EasyApiImpl (config *Config) (*Result, error) {
 			var route_result RouteResult
 			route_result.Route = path.Join(root, schema_name, definition.name)
 			route_result.Type = definition.method
-			route_result.Action = func (route_params string) (interface{}, error) {
-				parsed_params, err := parse_route_params(route_params)
-				if err != nil { return nil, err }
-
-				return definition.action(parsed_params, schema.Provider)
-			}
-
+			route_result._definition = definition
+			route_result._schema = schema
 			results.Routes = append(results.Routes, &route_result)
 		}
 	}

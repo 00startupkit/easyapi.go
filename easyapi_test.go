@@ -53,7 +53,7 @@ func TestNormalConfig (t *testing.T) {
 
 	res, err := EasyApiImpl(config);
 	assert.NoError(t, err, "Default config failed.");
-	assert.Equal(t, 1, len(res.Routes))
+	assert.GreaterOrEqual(t, len(res.Routes), 1)
 	assert.Equal(t, res.Routes[0].Route, "/api/users/all")
 	assert.Equal(t, res.Routes[0].Type, RequestType_GET)
 }
@@ -73,7 +73,7 @@ func TestApiRootConfig (t *testing.T) {
 	}
 	res, err := EasyApiImpl(config);
 	assert.NoError(t, err, "Default config failed.");
-	assert.Equal(t, 1, len(res.Routes))
+	assert.GreaterOrEqual(t, len(res.Routes), 1)
 	assert.Equal(t, res.Routes[0].Route, "/home/users/all")
 }
 
@@ -111,8 +111,8 @@ func TestFetchAll (t *testing.T) {
 
 	res, err := EasyApiImpl(config);
 	assert.NoError(t, err, "Default config failed.")
-	assert.Equal(t, 1, len(res.Routes))
-	
+	assert.GreaterOrEqual(t, len(res.Routes), 1)
+
 	all_route := res.Routes[0]
 	assert.Equal(t, all_route.Route, "/api/users/all")
 	res_opaque, err := all_route.Action("")
@@ -141,7 +141,7 @@ func TestFetchAllBounded (t *testing.T) {
 
 	res, err := EasyApiImpl(config);
 	assert.NoError(t, err, "Default config failed.")
-	assert.Equal(t, 1, len(res.Routes))
+	assert.NotEmpty(t, res.Routes)
 	
 	all_route := res.Routes[0]
 	assert.Equal(t, all_route.Route, "/api/users/all")
@@ -172,7 +172,7 @@ func TestFetchAllBounded2 (t *testing.T) {
 
 	res, err := EasyApiImpl(config);
 	assert.NoError(t, err, "Default config failed.")
-	assert.Equal(t, 1, len(res.Routes))
+	assert.NotEmpty(t, res.Routes)
 	
 	all_route := res.Routes[0]
 	assert.Equal(t, all_route.Route, "/api/users/all")
@@ -203,7 +203,7 @@ func TestFetchAllBoundedNegative (t *testing.T) {
 
 	res, err := EasyApiImpl(config);
 	assert.NoError(t, err, "Default config failed.")
-	assert.Equal(t, 1, len(res.Routes))
+	assert.NotEmpty(t, res.Routes)
 	
 	all_route := res.Routes[0]
 	assert.Equal(t, all_route.Route, "/api/users/all")
